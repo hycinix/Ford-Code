@@ -24,3 +24,4 @@
 *.ps1    diff=astextplain
 *.csv	diff=astextplain
 *.txt	diff=astextplain
+*.php    diff=astextplain

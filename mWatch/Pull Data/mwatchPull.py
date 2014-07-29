@@ -14,7 +14,9 @@ from email.MIMEText import MIMEText
 from email import Encoders
 from multiprocessing import Process
 
-George = True
+George = False
+
+directory = "C:\\Users\\b.marks\\Documents\\GitHub\\Ford-Code\\mWatch\\Pull Data\\Incident\\"
 
 def mwatchcsrf( content ):
     '''Gets mwatchcsrf (unique token) from sdp.mymwatch.com login page'''
@@ -28,7 +30,8 @@ def write( content ):
     '''Saves content to folder on desktop'''
     ## File to save output to
 ##    path = "C:\\Users\\b.marks\\Desktop\\Incident\\currSession.html"
-    path = "Incident\\currSession.html"
+##    path = "Incident\\currSession.html"
+    path = directory + "currSession.html"
     fh = open(path,"w")
     fh.write(content)
     fh.close()
@@ -39,7 +42,8 @@ def writeCSV( content ):
     date = time.strftime("%Y%m%d")
     ## path = "C:\\Users\\b.marks\\Desktop\\Incident\\Incidents_%s.csv" % (date) ## If saving multiple files
 ##    path = "C:\\Users\\b.marks\\Desktop\\Incident\\Incidents.csv"
-    path = "Incident\\Incidents.csv"
+##    path = "Incident\\Incidents.csv"
+    path = directory + "Incidents.csv"
     fh = open(path,"w")
     fh.write(ResolveDoubleNewLine(content))
     fh.close()
@@ -95,7 +99,7 @@ def GetIncidents( session ):
 def GetFiles():
     '''Gets all files with Incidents*.csv and Advanced...*.csv and finds the most recent one (going by filename). Returns incident,advanced'''
 ##    path = "C:\\Users\\b.marks\\Desktop\\Incident\\"
-    path = "Incident\\"
+    path = directory
     os.chdir(path)
     incidents = glob.glob("Incidents*.csv")
     advanceds = glob.glob("AdvancedSearchTicket*.csv")
@@ -197,7 +201,7 @@ def GenerateLine( rowsList, descriptions, resolutions, rowNum, session, users, i
         try:
             test = ccls[col[0]]
         except:
-            ccls[col[0]] = "Bunnies"
+            ccls[col[0]] = "Unknown"
         if col[3] == "Resolved" or col[3] == "Closed":
             duration = str(GetDifference( col[5], col[31] )) + " Hours"
             try:
@@ -258,9 +262,9 @@ def GenerateFile( session ):
 ##    else:
 ##        writeHandle = open("C:\\Users\\b.marks\\Desktop\\Incident\\BSD_mWatch_Tickets_Report.csv","w")
     if George:
-        writeHandle = open("Incident\\George_Report.csv","w")
+        writeHandle = open(directory + "George_Report.csv","w")
     else:
-        writeHandle = open("Incident\\BSD_mWatch_Tickets_Report.csv","w")
+        writeHandle = open(directory + "BSD_mWatch_Tickets_Report.csv","w")
         
     writeHandle.write("sep=~\n")
     incident,advanced = GetFiles()
@@ -282,9 +286,9 @@ def GenerateFile( session ):
     ccls = GetCCLs()
 
     for i in range(1, len(rows) - 1):
-        sys.stdout.write("\r%s%%" % (round(float(i*100)/(len(rows) - 1),2)))
+##        sys.stdout.write("\r%s%%" % (round(float(i*100)/(len(rows) - 1),2)))
         writeHandle.write(GenerateLine( rows, descriptions, resolutions, i, session, users, issues, ccls ))
-        sys.stdout.flush()
+##        sys.stdout.flush()
     writeHandle.close()
 
 def LookupResolution( ticketID, session ):
@@ -366,7 +370,7 @@ Please tell me if you have any questions or concerns.
 Thanks,
 Brian'''
 ##    attach = "C:\\Users\\B.marks\\Desktop\\Incident\\George_Report.csv"
-    attach = "Incident\\George_Report.csv"
+    attach = directory + "George_Report.csv"
     mail( to, cc, subject, text, attach )
 
 def mail(to, cc, subject, text, attach):
@@ -399,14 +403,14 @@ def mail(to, cc, subject, text, attach):
 
 def GetCCLs():
     '''Gets list of Tickets to CCL#'''
-    server = "ffazu0317\\gbs2uat2012"
-    database = "FF_Grants_TSP1"
-    query = "select top 2 * from subject"
+    server = "ffnyc0355"
+    database = "FordNet_Content"
+    query = "SELECT FLOAT2 AS MWATCHID, tp_ID AS CCLnR FROM AllUserData WHERE TP_LISTID = '5E36CE12-E5BD-45F6-8260-244BE2008D7F' AND tp_IsCurrent =1 AND FLOAT2 IS NOT NULL ORDER BY TP_ID DESC"
     engine = sqlalchemy.create_engine("mssql+pyodbc://%s/%s" % (server, database))
 
     ccl = {}
     for row in engine.execute(query):
-        ccl[row[0]] = row[1]
+        ccl[str(int(row[0]))] = str(int(row[1]))
 
     return ccl
 
@@ -437,7 +441,7 @@ def main():
         sys.stdout.write("\nSending Email\n")
         p = Process(target=DotDotDot)
         p.start()
-        SendGeorge()
+##        SendGeorge()
         p.terminate()    
 
 if __name__ == "__main__":

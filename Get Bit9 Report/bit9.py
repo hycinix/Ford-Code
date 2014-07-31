@@ -3,8 +3,6 @@ import requests
 import time
 import xlsxwriter
 
-directory = "C:\\Users\\b.marks\\documents\\GitHib\\Ford-Code\\Get Bit9 Report\\"
-
 def Authenticate():
     '''Authenticates to parity.fordfound.org'''
     session = requests.session()
@@ -75,10 +73,11 @@ def WriteXlsx(csvfile):
     sources = GetSources()
     csvRows = csvfile.split("\n")
     date = time.strftime("%Y-%m-%d")
-    filename = "Blocked_Files_(All)" + date + ".xlsx"
+    name = "Blocked_Files_(All)"
+    filename = "Bit9\\" + name + date + ".xlsx"
     workbook = xlsxwriter.Workbook(filename)
     pivot = workbook.add_worksheet('Report')
-    data = workbook.add_worksheet(filename.strip('.xlsx'))
+    data = workbook.add_worksheet(name)
 
     csvHeader = csvRows[0].split(",")
     csvHeader[0] = 'Possible Source'

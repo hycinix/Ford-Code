@@ -375,7 +375,7 @@ def GenerateLineXl( rowsList, descriptions, resolutions, ccls, session, users, i
         try:
             test = ccls[col[0]]
         except:
-            ccls[col[0]] = "No CCL#"
+            ccls[col[0]] = "N/A"
         if col[3] == "Resolved" or col[3] == "Closed":
             duration = str(GetDifference( col[5], col[31] )) + " Hours"
             try:

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import glob ## Dir with wildcard
 import csv
@@ -8,15 +9,12 @@ import datetime
 import smtplib
 import sqlalchemy
 import pyodbc
+import xlsxwriter
 from email.MIMEMultipart import MIMEMultipart
 from email.MIMEBase import MIMEBase
 from email.MIMEText import MIMEText
 from email import Encoders
 from multiprocessing import Process
-
-George = False
-
-directory = "C:\\Users\\b.marks\\Documents\\GitHub\\Ford-Code\\mWatch\\Pull Data\\Incident\\"
 
 def mwatchcsrf( content ):
     '''Gets mwatchcsrf (unique token) from sdp.mymwatch.com login page'''
@@ -29,8 +27,6 @@ def mwatchcsrf( content ):
 def write( content ):
     '''Saves content to folder on desktop'''
     ## File to save output to
-##    path = "C:\\Users\\b.marks\\Desktop\\Incident\\currSession.html"
-##    path = "Incident\\currSession.html"
     path = directory + "currSession.html"
     fh = open(path,"w")
     fh.write(content)
@@ -40,9 +36,6 @@ def writeCSV( content ):
     '''Saves CSV content to folder on desktop'''
     ## File to save output to
     date = time.strftime("%Y%m%d")
-    ## path = "C:\\Users\\b.marks\\Desktop\\Incident\\Incidents_%s.csv" % (date) ## If saving multiple files
-##    path = "C:\\Users\\b.marks\\Desktop\\Incident\\Incidents.csv"
-##    path = "Incident\\Incidents.csv"
     path = directory + "Incidents.csv"
     fh = open(path,"w")
     fh.write(ResolveDoubleNewLine(content))
@@ -76,7 +69,6 @@ def Authenticate():
         }
 
     response = session.post(postUrl,postData)
-##    write(ResolveLinks(response.content)) ## Outputs HTML file
 
 
     ## Returns session
@@ -92,7 +84,6 @@ def DotDotDot():
 def GetIncidents( session ):
     '''Gets Incidents_*.csv file and saves it'''
     incidentUrl = "https://sdp.mymwatch.com/Portal/index.php?r=servicedelivery/ticket/ExportToCSV&ticketType=1&action=IncidentFilter&fStatus=ViewAll&fStatusname=All+Incidents&undefined&&searchTxt="
-#    incidentUrl = "https://sdp.mymwatch.com/Portal/index.php?r=servicedelivery/ticket/ExportToCSV&ticketType=1&action=IncidentFilter&fStatus=ViewAll&fStatusname=All%20Incidents&fCategory=&fGroupname=72&fPriority=&fromDate=Created%20Date%20From&toDate=Created%20Date%20To&fStatusId=&undefined&&searchTxt="
     response = session.get(incidentUrl)
     writeCSV(response.content)
 
@@ -103,9 +94,6 @@ def GetFiles():
     os.chdir(path)
     incidents = glob.glob("Incidents*.csv")
     advanceds = glob.glob("AdvancedSearchTicket*.csv")
-    ## If saving multiple files
-    ## incident = max(incidents)
-    ## advanced = max(advanceds)
     incident = path + "Incidents.csv"
     advanced = path + "AdvancedSearchTicket.csv"
     return incident,advanced
@@ -172,17 +160,6 @@ def GenerateLine( rowsList, descriptions, resolutions, rowNum, session, users, i
         condition = col[25] in users and col[9] not in issues ## Requestor in users and issue not in issues
     else:
         condition = col[25] in users or col[22] in users or col[23] == "FordGBS" ## Request in users or owner in users or group == FordGBS
-
-##    if( col[0] != "" ## Row isn't blank
-##
-##        ## George
-####        and col[25] in users ## If Requestor is in user list
-####        and col[9] not in issues): ## and Issue type not in issue list
-##
-##        ## BSD
-##        and (col[25] in users ## If Owner is in user list
-##            or col[22] in users
-##             or col[23] == "FordGBS")): ## If Requestor is in user list
 
     if col[0] != "" and condition:
         col[0] = col[0].strip('"') ## fixes leading quote
@@ -257,10 +234,6 @@ def GenerateHeader( rowsList ):
 
 def GenerateFile( session ):
     '''Generates result file with all the bells and whistles'''
-##    if George:
-##        writeHandle = open("C:\\Users\\b.marks\\Desktop\\Incident\\George_Report.csv","w")
-##    else:
-##        writeHandle = open("C:\\Users\\b.marks\\Desktop\\Incident\\BSD_mWatch_Tickets_Report.csv","w")
     if George:
         writeHandle = open(directory + "George_Report.csv","w")
     else:
@@ -286,10 +259,152 @@ def GenerateFile( session ):
     ccls = GetCCLs()
 
     for i in range(1, len(rows) - 1):
-##        sys.stdout.write("\r%s%%" % (round(float(i*100)/(len(rows) - 1),2)))
+        sys.stdout.write("\r%s%%" % (round(float(i*100)/(len(rows) - 1),2)))
         writeHandle.write(GenerateLine( rows, descriptions, resolutions, i, session, users, issues, ccls ))
-##        sys.stdout.flush()
+        sys.stdout.flush()
     writeHandle.close()
+
+def GenerateFileXl( session, George ):
+    '''Generates result file with all the bells and whistles'''
+    if George:
+        workbook = xlsxwriter.Workbook(directory + "BSD_mWatch_Tickets_Report.xlsx")
+    else:
+        workbook = xlsxwriter.Workbook(directory + "BSD_mWatch_Tickets_Report_All.xlsx")
+        
+    worksheet = workbook.add_worksheet('mWatch Tickets')
+    MakeNewFiles()
+    descriptionFile = directory + "descriptions.csv"
+    resolutionFile = directory + "resolutions.csv"
+    incidentFile = directory + "Incidents.csv"
+
+    descriptions = GetDescriptions( descriptionFile )
+    resolutions = GetResolutions( resolutionFile )
+    rows = GetContents( incidentFile )
+    ccls = GetCCLs()
+    readHandle = open(directory + "users.txt","r")
+    users = readHandle.read().split("\n")
+    readHandle.close()
+
+    readHandle = open(directory + "issues.txt","r")
+    issues = readHandle.read().split("\n")
+    readHandle.close()
+
+    headerFormat = workbook.add_format()
+    headerFormat.set_pattern(1)
+    headerFormat.set_bg_color('#4F81BC')
+    headerFormat.set_font_color('#FFFFFF')
+    headerFormat.set_bold()
+
+    rowFormat = workbook.add_format()
+    rowFormat.set_align('top')
+    rowFormat.set_text_wrap()
+    rowFormat.set_bottom()
+    rowFormat.set_bottom_color('#717B96')
+
+    GenerateHeaderXl( rows, worksheet, headerFormat )
+
+    sheetNum = 1
+
+    for i in range(1,len(rows) - 1):
+        sheetNum = GenerateLineXl( rows, descriptions, resolutions, ccls, session, users, issues, i, worksheet, sheetNum, rowFormat, George )
+    worksheet.autofilter(0,0,sheetNum - 1,12)
+    
+    workbook.close()
+
+def GenerateHeaderXl( rowsList, worksheet, headerFormat ):
+    '''Generates xls header and format'''
+    col = rowsList[0].split('","')
+    col[0] = col[0].strip('"') ## fixes leading quote
+    col[0] = "Ticket ID"
+    col[-1] = col[-1].strip('"') ## fixes trailing quote
+    columns = [
+            col[0].strip('"'), ## Ticket
+            "CCL#",
+            "Description", ## Description
+            col[9], ## Issue Type
+            col[22], ## Owner
+            col[12], ## Priority
+            col[3], ## Status
+            col[25], ## Requestor
+            "Completion Time", ## Duration
+            col[5], ## Created 
+            col[31], ## Resolved
+            col[33], ## Closed
+            "Resolution Comments"
+            ]
+    worksheet.set_column('A:A', 15 ) ## TicketID
+    worksheet.set_column('B:B', 10 ) ## CCL#
+    worksheet.set_column('C:C', 60 ) ## Description
+    worksheet.set_column('D:E', 20 ) ## Issue Type, Owner
+    worksheet.set_column('F:F', 10 ) ## Priority
+    worksheet.set_column('G:L', 20 ) ## others
+    worksheet.set_column('M:M', 60 ) ## Resolution
+    
+    
+    for i in range(len(columns)):
+        worksheet.write(0,i,columns[i], headerFormat)
+  
+
+def GenerateLineXl( rowsList, descriptions, resolutions, ccls, session, users, issues, rowNum, worksheet, sheetNum, rowFormat, George ):
+    '''Writes one line into the destination file'''    
+    col = rowsList[rowNum].split('","')
+    if( len(col) < 40 ):
+        return sheetNum
+
+    condition = True
+    
+    if George:
+        condition = col[25] in users and col[9] not in issues ## Requestor in users and issue not in issues
+    else:
+        condition = col[25] in users or col[22] in users or col[23] == "FordGBS" ## Request in users or owner in users or group == FordGBS
+
+    if col[0] != "" and condition:
+        col[0] = col[0].strip('"') ## fixes leading quote
+        col[-1] = col[-1].strip('"') ## fixes trailing quote
+
+        resolution = ""
+        description = ""
+        duration = ""
+        
+        try:
+            description = descriptions[col[0]]
+        except KeyError:
+            descriptions[col[0]] = UpdateDescription( col[0], session )
+            description = descriptions[col[0]]
+
+        try:
+            test = ccls[col[0]]
+        except:
+            ccls[col[0]] = "No CCL#"
+        if col[3] == "Resolved" or col[3] == "Closed":
+            duration = str(GetDifference( col[5], col[31] )) + " Hours"
+            try:
+                resolution = resolutions[col[0]]
+            except KeyError:
+                resolutions[col[0]] = UpdateResolution( col[0], session )
+                resolution = resolutions[col[0]]
+                
+        columns = [col[0].strip('"').decode('utf-8'),
+                   ccls[col[0]].decode('utf-8'),
+                   description.decode('utf-8'), ## Description
+                   col[9].decode('utf-8'), ## Issue Type
+                   col[22].decode('utf-8'), ## Owner
+                   col[12].decode('utf-8'), ## Priority
+                   col[3].decode('utf-8'), ## Status
+                   col[25].decode('utf-8'), ## Requestor
+                   duration.decode('utf-8'), ## Time to complete
+                   col[5].decode('utf-8'), ## Created
+                   col[31].decode('utf-8'), ## Resolved
+                   col[33].decode('utf-8'), ## Closed
+                   resolution.decode('utf-8') ## Resolution
+                   ]
+        worksheet.set_row(sheetNum, 40 )
+        for i in range(len(columns)):
+            worksheet.write(sheetNum, i, columns[i], rowFormat)
+        return sheetNum + 1
+    return sheetNum
+            
+            
 
 def LookupResolution( ticketID, session ):
     '''Looks up resoltuion of ticket. Ticket must be either closed or resolved'''
@@ -302,7 +417,7 @@ def LookupResolution( ticketID, session ):
     resolution = content[start:end]
 
     while resolution.find("&nbsp;") != -1:
-        resolution = resolution.replace("&nbsp"," ")
+        resolution = resolution.replace("&nbsp;"," ")
     while resolution.find("<") != -1:
         subset = resolution[resolution.find("<"):resolution.find(">") + 1]
         resolution = resolution.replace(subset," ")
@@ -326,8 +441,8 @@ def LookupDescription( ticketID, session ):
         description = content[start:end]
         if not ( description == "" or start == (-1 + len(delimeter))):
             break
-    while description.find("&nbsp") != -1:
-        description = description.replace("&nbsp"," ")
+    while description.find("&nbsp;") != -1:
+        description = description.replace("&nbsp;"," ")
     while description.find("<") != -1:
         subset = description[description.find("<"):description.find(">") + 1]
         description = description.replace(subset," ")
@@ -363,14 +478,31 @@ def SendGeorge():
         "bmarks1994@gmail.com"
         ]
     
-    subject = "BSD - mWatch Ticket Report"
+    subject = "BSD - mWatch Ticket Report - " + time.strftime("%m/%d")
     text = '''Hello George,
 Attached is a report of the tickets requested by the BSD
 Please tell me if you have any questions or concerns.
 Thanks,
 Brian'''
-##    attach = "C:\\Users\\B.marks\\Desktop\\Incident\\George_Report.csv"
-    attach = directory + "George_Report.csv"
+    attach = directory + "BSD_mWatch_Tickets_Report.xlsx"
+    mail( to, cc, subject, text, attach )
+
+def SendBSD():
+    '''Sends email to BSD'''
+    to = [
+        "b.marks@fordfound.org"
+        ]
+    cc = [
+        "bmarks1994@gmail.com"
+        ]
+    
+    subject = "BSD - mWatch Ticket Report - " + time.strftime("%m/%d")
+    text = '''Hello BSD Team,
+Attached is a report of the tickets requested by the BSD
+Please tell me if you have any questions or concerns.
+Thanks,
+Brian'''
+    attach = directory + "BSD_mWatch_Tickets_Report_All.xlsx"
     mail( to, cc, subject, text, attach )
 
 def mail(to, cc, subject, text, attach):
@@ -426,23 +558,34 @@ def main():
     sys.stdout.write("\nDownloading\n")
     p = Process(target=DotDotDot)
     p.start()
-##    GetIncidents(session)
+    GetIncidents(session)
     p.terminate()
+
     
+    ## George
     sys.stdout.write("\nGenerating File\n")
-##    p = Process(target=DotDotDot)
-##    p.start()
-    GenerateFile( session )
-##    p.terminate()
+    ## No dots. Percent progress
+    GenerateFileXl( session, True )
 
-    sys.stdout.write("\nThe csv has been created\n")
+    sys.stdout.write("\nSending Email\n")
+    p = Process(target=DotDotDot)
+    p.start()
+    SendGeorge()
+    p.terminate()
 
-    if George:
-        sys.stdout.write("\nSending Email\n")
-        p = Process(target=DotDotDot)
-        p.start()
-##        SendGeorge()
-        p.terminate()    
+
+    ## BSD
+    sys.stdout.write("\nGenerating File\n")
+    ## No dots. Percent progress
+    GenerateFileXl( session, False )
+    
+    sys.stdout.write("\nSending Email\n")
+    p = Process(target=DotDotDot)
+    p.start()
+    SendBSD()
+    p.terminate()
 
 if __name__ == "__main__":
+    ## const
+    directory = "C:\\Users\\b.marks\\Documents\\GitHub\\Ford-Code\\mWatch\\Pull Data\\Incident\\"
     main()

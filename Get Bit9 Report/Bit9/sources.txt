@@ -1,0 +1,64 @@
+File Name,Possible Source
+1.34.0.3557[1].exe,Password Box - Password Manager
+123_b055_multilanguage.exe,Blackberry
+arabic.exe,Arabic Keyboard
+arablpk.exe,Arabic Keyboard
+bbrm.exe,Bloomberg
+bbxlcmd.exe,Bloomberg
+bloomberg.rtdserver.exe,Bloomberg
+bloomberg.uiserver.exe,Bloomberg
+blpaddinhost.exe,Bloomberg
+blpsmarthost.exe,Bloomberg
+blpupd.exe,Bloomberg
+bxladiag.exe,Bloomberg
+bxlain.exe,Bloomberg
+bxlartd.exe,Bloomberg
+bxlaui.exe,Bloomberg
+cltmng.exe,Conduit - Virus
+cltmngsvc.exe,Conduit - Virus
+cltmngui.exe,Conduit - Virus
+crmupdatewrapper.exe,Built in Windows
+dropbox.exe,Dropbox
+dropbox_sqlite_ext.{5f3e3153-5bce-5766-8f84-3e3e7ecf0d81}.tmpmlceij.dll,Dropbox
+dropboxinstaller.exe,Dropbox
+dsrlte.exe,Search Bar - Spyware
+fdm.exe,Free Download Manager - Download Accelerator
+flashplayerinstaller.exe,Adobe Flash
+flashplayerupdateservice.exe,Adobe Flash
+googledrivesync.exe,Google Drive
+hvk.exe,Virtual Keyboard - Rebind Keys
+idman.exe,Internet Download Manager by Tonic
+idmupdt.exe,Internet Download Manager by Tonic
+ietabhelper.exe,Chrome Addon
+installerutils.exe,Blackberry
+internetspeedtracker.exe,Internet Speed Tracker - Toolbar
+lmi_rescue.exe,Logmein Rescue
+maninst.exe,Canon Printer Software
+minst.exe,Canon Printer Software
+mp3tagv260setup[1].exe,MP3 Tag Editor
+notification_72384792387498237989237498237498.exe,Trojan from Email
+ntoskrnl.exe,Built in Windows
+pmbdiscimporter.exe,Sony Disc Importer
+pmbmediaimporter.exe,Sony Disc Importer
+pmbonetouchclient.exe,Sony Disc Importer
+pmbportablelauncher.exe,Sony Disc Importer
+poqexec.exe,Built in Windows
+prezi.exe,Prezi - Presentation Software
+qlikviewdesktop_x64setup (1).exe,Qlik - Presentation Software
+qlikviewdesktop_x64setup.exe,Qlik - Presentation Software
+serialtrunc.purbrowse64.exe,Adware
+service_update.exe,Password Box - Password Manager
+spotify.exe,Spotify
+spotify_new.exe,Spotify
+spotifyhelper.exe,Spotify
+spotifywebhelper.exe,Spotify
+spsetup.exe,Conduit - Virus
+sptool64.exe,Conduit - Virus
+stickies.exe,Stickies - Software to write notes
+sugarsync.exe,SugarSync - Cloud Storage
+tbbc.exe,Bloomberg
+vk_setup.exe,Virtual Keyboard - Rebind Keys
+vk_setup.tmp,Virtual Keyboard - Rebind Keys
+wintrv.exe,Bloomberg
+wrtmon.exe,Canon Printer Software
+wrtproc.exe,Canon Printer Software

@@ -1,5 +1,9 @@
+# -*- coding: utf-8 -*-
 import requests
 import time
+import xlsxwriter
+
+directory = "C:\\Users\\b.marks\\documents\\GitHib\\Ford-Code\\Get Bit9 Report\\"
 
 def Authenticate():
     '''Authenticates to parity.fordfound.org'''
@@ -44,14 +48,74 @@ def GetCSV( session ):
     csvfile = session.get(csvurl)
     return csvfile.content
 
+def GetContents( csvfile ):
+    '''Gets List of Rows of the file'''
+    fhr = open(csvfile,"r")
+    file_read = fhr.read()
+    rows = file_read.split("\n")
+    fhr.close()
+    return rows
+
+def GetSources():
+    '''Gets dictionary of filename to possible source'''
+    fh = open("Bit9\\sources.txt","r")
+    read = fh.read()
+    rows = read.split("\n")
+
+    sources = {}
+
+    for i in range(len(rows)):
+        columns = rows[i].split(",")
+        sources[columns[0].strip('"')] = columns[1].strip('"')
+    sources[""] = 'Possible Source'
+    return sources
+
+def WriteXlsx(csvfile):
+    '''Writes spreadsheet'''
+    sources = GetSources()
+    csvRows = csvfile.split("\n")
+    date = time.strftime("%Y-%m-%d")
+    filename = "Blocked_Files_(All)" + date + ".xlsx"
+    workbook = xlsxwriter.Workbook(filename)
+    pivot = workbook.add_worksheet('Report')
+    data = workbook.add_worksheet(filename.strip('.xlsx'))
+
+    csvHeader = csvRows[0].split(",")
+    csvHeader[0] = 'Possible Source'
+    header = []
+    for i in range(len(csvHeader)):
+        header.append({'header' : csvHeader[i].strip('"')})
+    
+    data.add_table('A1:N%s' % (len(csvfile) - 1), {'columns' : header })
+    data.set_column('A:N', 20)
+
+    for i in range(1, len(csvRows)):
+        csvCols = csvRows[i].split(",")
+        for j in range(len(csvCols)):
+            if len(csvCols) < 9:
+                continue
+            try:
+                source = sources[csvCols[9].strip('"')]
+            except KeyError:
+                source = 'Unknown'
+            data.write(i,j,csvCols[j].strip('"').decode('utf-8'))
+            data.write(i,0, source)
+
+    workbook.close()
+
 def main():
     '''main func'''
     print("Authenticating")
     session = Authenticate()
     print("Downloading CSV")
     csvfile = GetCSV( session )
-    print("Writing CSV to disk")
-    WriteCSV( csvfile )
+    
+######     Not needed!!
+####    print("Writing CSV to disk")
+####    WriteCSV( csvfile )
+    print("Generating File")
+    WriteXlsx(csvfile)
+    
 
 if __name__ == '__main__':
     main()

@@ -472,10 +472,11 @@ def GetDifference( before, after ):
 def SendGeorge():
     '''Sends email to George'''
     to = [
-        "b.marks@fordfound.org"
+        "g.fertig@fordfound.org"
         ]
     cc = [
-        "bmarks1994@gmail.com"
+        "b.marks@fordfound.org",
+        "k.zhao@fordfound.org"
         ]
     
     subject = "BSD - mWatch Ticket Report - " + time.strftime("%m/%d")
@@ -490,10 +491,11 @@ Brian'''
 def SendBSD():
     '''Sends email to BSD'''
     to = [
-        "b.marks@fordfound.org"
+        "k.zhao@fordfound.org",
+        "q.sun@fordfound.org"
         ]
     cc = [
-        "bmarks1994@gmail.com"
+        "b.marks@fordfound.org"
         ]
     
     subject = "BSD - mWatch Ticket Report - " + time.strftime("%m/%d")

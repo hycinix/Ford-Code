@@ -32,7 +32,7 @@ def write( content ):
     fh.write(content)
     fh.close()
 
-def writeCSV( content ):
+def WriteCSV( content ):
     '''Saves CSV content to folder on desktop'''
     ## File to save output to
     date = time.strftime("%Y%m%d")
@@ -40,6 +40,17 @@ def writeCSV( content ):
     fh = open(path,"w")
     fh.write(ResolveDoubleNewLine(content))
     fh.close()
+
+def AppendCSV( content ):
+    '''Appends to CSV file'''
+    ## File to save output to
+    path = directory + "Incidents.csv"
+    resolveDub = ResolveDoubleNewLine(content)
+    withoutHeaders= resolveDub[resolveDub.find("\n") + 2:] ## +2 to not include newline
+    fh = open(path,"a")
+    fh.write(ResolveDoubleNewLine(content))
+    fh.close()
+
 
 def ResolveDoubleNewLine( content ):
     '''Resolves the double new line in CSV files'''
@@ -85,7 +96,13 @@ def GetIncidents( session ):
     '''Gets Incidents_*.csv file and saves it'''
     incidentUrl = "https://sdp.mymwatch.com/Portal/index.php?r=servicedelivery/ticket/ExportToCSV&ticketType=1&action=IncidentFilter&fStatus=ViewAll&fStatusname=All+Incidents&undefined&&searchTxt="
     response = session.get(incidentUrl)
-    writeCSV(response.content)
+    WriteCSV(response.content)
+
+def AppendRequests( session ):
+    '''Gets Requests_*.csv file and appends it to Incidents_*.csv file'''
+    requestUrl = "https://sdp.mymwatch.com/Portal/index.php?r=servicedelivery/ticket/ExportToCSV&ticketType=2&action=RequestFilter&fStatus=ViewReqAll&fStatusname=All+Requests&undefined&&searchTxt="
+    response = session.get(requestUrl)
+    AppendCSV(response.content)
 
 def GetFiles():
     '''Gets all files with Incidents*.csv and Advanced...*.csv and finds the most recent one (going by filename). Returns incident,advanced'''
@@ -472,11 +489,11 @@ def GetDifference( before, after ):
 def SendGeorge():
     '''Sends email to George'''
     to = [
-        "g.fertig@fordfound.org"
+#        "g.fertig@fordfound.org"
         ]
     cc = [
         "b.marks@fordfound.org",
-        "k.zhao@fordfound.org"
+#        "k.zhao@fordfound.org"
         ]
     
     subject = "BSD - mWatch Ticket Report - " + time.strftime("%m/%d")
@@ -491,8 +508,8 @@ Brian'''
 def SendBSD():
     '''Sends email to BSD'''
     to = [
-        "k.zhao@fordfound.org",
-        "q.sun@fordfound.org"
+#        "k.zhao@fordfound.org",
+#        "q.sun@fordfound.org"
         ]
     cc = [
         "b.marks@fordfound.org"
@@ -557,10 +574,12 @@ def main():
     session = Authenticate()
     p.terminate()
 
-    sys.stdout.write("\nDownloading\n")
+    sys.stdout.write("\nDownloading Incidents\n")
     p = Process(target=DotDotDot)
     p.start()
     GetIncidents(session)
+    sys.stdout.write("\nDownloading Requests\n")
+    AppendRequests(session)
     p.terminate()
 
     

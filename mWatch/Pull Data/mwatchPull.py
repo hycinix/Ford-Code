@@ -10,6 +10,7 @@ import smtplib
 import sqlalchemy
 import pyodbc
 import xlsxwriter
+import operator
 from email.MIMEMultipart import MIMEMultipart
 from email.MIMEBase import MIMEBase
 from email.MIMEText import MIMEText
@@ -51,6 +52,24 @@ def AppendCSV( content ):
     fh.write(ResolveDoubleNewLine(content))
     fh.close()
 
+def CompareCSV( a, b ):
+    '''Comparison function for CSV sorting'''
+    if not a[0].isdigit():
+        return 1
+    elif not b[0].isdigit():
+        return -1
+    else:
+        return int(b[0]) - int(a[0])
+    
+def SortCSV():
+    '''Sorts CSV file'''
+    data = csv.reader(open(directory + 'Incidents.csv'),delimiter=',', quotechar='"')
+    sortedlist = sorted(data, cmp=CompareCSV)    # 0 specifies according to first column we want to sort
+    #now write the sorte result into new CSV file
+    with open(directory + "Incidents.csv", "wb") as f:
+        fileWriter = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL)
+        for row in sortedlist:
+            fileWriter.writerow(row)
 
 def ResolveDoubleNewLine( content ):
     '''Resolves the double new line in CSV files'''
@@ -131,7 +150,7 @@ def UpdateDescription(ticketID, session ):
     description = LookupDescription( ticketID, session )
     description = description.replace("\r\n"," ").replace("Problem:"," ").replace("Problem Description:"," ")
     description = description.strip()
-    writeHandle = open("descriptions.csv","a")
+    writeHandle = open(directory + "descriptions.csv","a")
     writeHandle.write('"%s","%s"\n' % (ticketID, description))
     writeHandle.close()
     return description
@@ -151,7 +170,7 @@ def UpdateResolution( ticketID, session ):
     '''Updates resolutions.csv file from web'''
     resolution = LookupResolution( ticketID, session )
     resolution = resolution.strip().replace("\r\n"," ")
-    writeHandle = open("resolutions.csv","a")
+    writeHandle = open(directory + "resolutions.csv","a")
     writeHandle.write('"%s","%s"\n' % (ticketID, resolution))
     writeHandle.close()
     return resolution
@@ -284,9 +303,9 @@ def GenerateFile( session ):
 def GenerateFileXl( session, George ):
     '''Generates result file with all the bells and whistles'''
     if George:
-        workbook = xlsxwriter.Workbook(directory + "BSD_mWatch_Tickets_Report.xlsx")
+        workbook = xlsxwriter.Workbook(directory + "BSD_mWatch_Tickets_Report.xlsx", {'strings_to_numbers' : True, 'sort' : True})
     else:
-        workbook = xlsxwriter.Workbook(directory + "BSD_mWatch_Tickets_Report_All.xlsx")
+        workbook = xlsxwriter.Workbook(directory + "BSD_mWatch_Tickets_Report_All.xlsx", {'strings_to_numbers' : True, 'sort' : True})
         
     worksheet = workbook.add_worksheet('mWatch Tickets')
     MakeNewFiles()
@@ -323,7 +342,9 @@ def GenerateFileXl( session, George ):
     sheetNum = 1
 
     for i in range(1,len(rows) - 1):
+        sys.stdout.write("\r%s%%" % (round(float(i*100)/(len(rows) - 1),2)))
         sheetNum = GenerateLineXl( rows, descriptions, resolutions, ccls, session, users, issues, i, worksheet, sheetNum, rowFormat, George )
+        sys.stdout.flush()
     worksheet.autofilter(0,0,sheetNum - 1,12)
     
     workbook.close()
@@ -466,13 +487,13 @@ def LookupDescription( ticketID, session ):
     return description
 
 def MakeNewFiles():
-    if not os.path.exists("descriptions.csv"):
-        f = open("descriptions.csv","w")
+    if not os.path.exists(directory + "descriptions.csv"):
+        f = open(directory + "descriptions.csv","w")
         f.write('"TicketID","Description"\n')
         f.close()
 
-    if not os.path.exists("resolutions.csv"):
-        f = open("resolutions.csv","w")
+    if not os.path.exists(directory + "resolutions.csv"):
+        f = open(directory + "resolutions.csv","w")
         f.write('"TicketID","Resolution"\n')
         f.close()
 
@@ -580,6 +601,8 @@ def main():
     GetIncidents(session)
     sys.stdout.write("\nDownloading Requests\n")
     AppendRequests(session)
+    sys.stdout.write("\nSorting CSV\n")
+    SortCSV()
     p.terminate()
 
     

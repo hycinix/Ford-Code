@@ -791,3 +791,6 @@
 "818832","This is a duplicate ticket. Please refer to ticket #: 823410"
 "712666","Rel26.4.0"
 "689170","Rel26.4.0"
+"1528496","re-compile the GetMyGranteeList stored procedure.  A pemanent fix will be applied to it today"
+"1527296","User confirmed that issue fixed, hence resolving ticket."
+"1525305","Required workflow restart"

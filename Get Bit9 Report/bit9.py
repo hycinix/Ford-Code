@@ -85,7 +85,7 @@ def WriteXlsx(csvfile):
     for i in range(len(csvHeader)):
         header.append({'header' : csvHeader[i].strip('"')})
     
-    data.add_table('A1:N%s' % (len(csvfile) - 1), {'columns' : header })
+    data.add_table('A1:N%s' % (len(csvRows) - 1), {'columns' : header })
     data.set_column('A:N', 20)
 
     for i in range(1, len(csvRows)):

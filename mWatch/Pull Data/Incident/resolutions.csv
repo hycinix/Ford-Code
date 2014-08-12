@@ -794,3 +794,7 @@
 "1528496","re-compile the GetMyGranteeList stored procedure.  A pemanent fix will be applied to it today"
 "1527296","User confirmed that issue fixed, hence resolving ticket."
 "1525305","Required workflow restart"
+"1529347","As requested, servers moved to low enforcement and after installation, reverted back to high enforcement. Hence resolving this ticket with user confirmation."
+"1522127","User confirmed that the issue is resolved, Hence resolving the ticket"
+"1514157","From: Vinoth Balakrishnan   Sent: Wednesday, August 6, 2014 6:11 PM  To: &#039;Sundar, Flint&#039;; GlobalServiceDesk  Cc: IMSShared_WindowsTeam  Subject: RE: Parity 9 Blocked Scripts on FFSMQ0503-#1514157    Hi Flint ,    FFSMQ0503 server is scheduled to perform a VMware image backup every night in Avamar. Please find the attached mail from SHI. Thanks     Best Regards  Vinoth B  Windows Operations  +9144-33711118  E-Mail       : Vinoth_balakrishnan@mindtree.com   Follow us: www.mindtree.com/social    Welcome to possible"
+"1335798","Issue has been resolved. Got a confirmation from requestor. Hence closing this request."

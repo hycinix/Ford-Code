@@ -251,18 +251,18 @@ def GenerateHeader( rowsList ):
     col[0] = "Ticket ID"
     col[-1] = col[-1].strip('"') ## fixes trailing quote
     columns = [
-            col[0].strip('"'), ## Ticket
+            "Ticket ID", ## Ticket
             "CCL#",
             "Description", ## Description
-            col[9], ## Issue Type
-            col[22], ## Owner
-            col[12], ## Priority
-            col[3], ## Status
-            col[25], ## Requestor
+            "Issue Type Reported", ## Issue Type
+            "Owner", ## Owner
+            "Priority", ## Priority
+            "Current Status", ## Status
+            "Requestor Name", ## Requestor
             "Completion Time", ## Duration
-            col[5], ## Created 
-            col[31], ## Resolved
-            col[33], ## Closed
+            "Created Time", ## Created 
+            "Resolved Time", ## Resolved
+            "Closed Time", ## Closed
             "Resolution Comments"
             ]
     oneRow = "~".join(columns)
@@ -351,23 +351,19 @@ def GenerateFileXl( session, George ):
 
 def GenerateHeaderXl( rowsList, worksheet, headerFormat ):
     '''Generates xls header and format'''
-    col = rowsList[0].split('","')
-    col[0] = col[0].strip('"') ## fixes leading quote
-    col[0] = "Ticket ID"
-    col[-1] = col[-1].strip('"') ## fixes trailing quote
     columns = [
-            col[0].strip('"'), ## Ticket
+            "Ticket ID", ## Ticket
             "CCL#",
             "Description", ## Description
-            col[9], ## Issue Type
-            col[22], ## Owner
-            col[12], ## Priority
-            col[3], ## Status
-            col[25], ## Requestor
+            "Issue Type Reported", ## Issue Type
+            "Owner", ## Owner
+            "Priority", ## Priority
+            "Current Status", ## Status
+            "Requestor Name", ## Requestor
             "Completion Time", ## Duration
-            col[5], ## Created 
-            col[31], ## Resolved
-            col[33], ## Closed
+            "Created Time", ## Created 
+            "Resolved Time", ## Resolved
+            "Closed Time", ## Closed
             "Resolution Comments"
             ]
     worksheet.set_column('A:A', 15 ) ## TicketID
@@ -510,38 +506,38 @@ def GetDifference( before, after ):
 def SendGeorge():
     '''Sends email to George'''
     to = [
-#        "g.fertig@fordfound.org"
+        "g.fertig@fordfound.org"
         ]
     cc = [
         "b.marks@fordfound.org",
-#        "k.zhao@fordfound.org"
+        "k.zhao@fordfound.org"
         ]
     
     subject = "BSD - mWatch Ticket Report - " + time.strftime("%m/%d")
-    text = '''Hello George,
+    text = '''[This is an automatic message]
+Hello George,
 Attached is a report of the tickets requested by the BSD
-Please tell me if you have any questions or concerns.
-Thanks,
-Brian'''
+Please email Brian Marks at b.marks@fordfound.org
+or call x4990 if you have any questions.'''
     attach = directory + "BSD_mWatch_Tickets_Report.xlsx"
     mail( to, cc, subject, text, attach )
 
 def SendBSD():
     '''Sends email to BSD'''
     to = [
-#        "k.zhao@fordfound.org",
-#        "q.sun@fordfound.org"
+        "k.zhao@fordfound.org",
+        "q.sun@fordfound.org"
         ]
     cc = [
         "b.marks@fordfound.org"
         ]
     
     subject = "BSD - mWatch Ticket Report - " + time.strftime("%m/%d")
-    text = '''Hello BSD Team,
+    text = '''[This is an automatic message]
+Hello BSD Team,
 Attached is a report of the tickets requested by the BSD
-Please tell me if you have any questions or concerns.
-Thanks,
-Brian'''
+Please email Brian Marks at b.marks@fordfound.org
+or call x4990 if you have any questions.'''
     attach = directory + "BSD_mWatch_Tickets_Report_All.xlsx"
     mail( to, cc, subject, text, attach )
 

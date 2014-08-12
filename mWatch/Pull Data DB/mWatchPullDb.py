@@ -320,5 +320,5 @@ def main():
 
 if __name__ == "__main__":
     ## const
-    directory = "C:\\Users\\b.marks\\Desktop\\"
+    directory = "C:\\Users\\b.marks\\Documents\\GitHub\\Ford-Code\\mWatch\\Pull Data DB\\"
     main()

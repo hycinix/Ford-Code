@@ -4,6 +4,8 @@ import smtplib
 import sqlalchemy
 import xlsxwriter
 import requests
+import xlrd
+from requests_ntlm import HttpNtlmAuth
 import csv
 import sys
 import time
@@ -12,6 +14,27 @@ from email.MIMEMultipart import MIMEMultipart
 from email.MIMEBase import MIMEBase
 from email.MIMEText import MIMEText
 from email import Encoders
+
+def DownloadFile(url, cred):
+    '''Downloads file with credentials'''
+    local_filename = "sharepoint_tickets.xlsx"
+    r = requests.get(url, auth=cred)
+    f = open(local_filename, 'wb')
+    for chunk in r.iter_content(chunk_size=512 * 1024):
+        if chunk: # filter out keep-alive new chunks
+            f.write(chunk)
+    f.close()
+    return
+
+def InsertComments(engine):
+    '''Inserts comments + satisfaction in DB'''
+    wb = xlrd.open_workbook("sharepoint_tickets.xlsx")
+    sheet = wb.sheets()[0]
+    for i in range(1, sheet.nrows):
+        if (sheet.cell(i,14).value != "" or sheet.cell(i,15).value != ""):
+            values = "'" + str(int(sheet.cell(i,0).value)) + "','" + str(sheet.cell(i,14).value) + "','" + str(sheet.cell(i,15).value) + "'"
+            query = "INSERT INTO Comments VALUES("+values+")"
+            engine.execute(query)
 
 def mwatchcsrf( content ):
     '''Gets mwatchcsrf (unique token) from sdp.mymwatch.com login page'''
@@ -131,17 +154,13 @@ def LookupDescription( ticketID, session ):
     return description
 
     
-def GetContents( incident, engine ):
-    '''Gets List of Rows of the file without tickets already in db'''
-    tickets = []
-    result = engine.execute( "SELECT TicketId FROM Tickets" )
-    for ticket in result:
-        tickets.append(ticket[0])
+def GetContents( incident ):
+    '''Gets List of Rows of the file'''
     rows = []
     with open(incident,"rb") as incidents:
         reader = csv.reader(incidents, delimiter=',', quotechar = '"')
         for csvRow in reader:
-                if csvRow[0].strip('"').isdigit() and int(csvRow[0].strip('"')) not in tickets:
+                if csvRow[0].strip('"').isdigit():
                         row = ""
                         for col in csvRow:
                                 row += ("'" + str(col).replace("'","") + "',")
@@ -216,12 +235,11 @@ def GenerateFileXl( George ):
         for j in range(len(result.keys())):
             if rows[i][j] != None:
                 worksheet.write(i + 1, j, (str(rows[i][j])).decode('utf-8','ignore'), rowFormat )
-                worksheet.set_row(i+1,40)
             else:
                 worksheet.write(i + 1, j, "", rowFormat )
-                worksheet.set_row(i+1,40)
+        worksheet.set_row(i+1,40)
 
-    worksheet.autofilter(0,0,len(rows),len(result.keys()))
+    worksheet.autofilter(0,0,len(rows),len(result.keys()) - 1)
     
     workbook.close()
 
@@ -273,21 +291,39 @@ def main():
     database = "mWatch"
     engine = sqlalchemy.create_engine("mssql+pyodbc://%s/%s" % (server, database))
 
+    print("Getting Comments From Sharepoint")
+    ## Resets comments table
+    query = "DELETE FROM Comments WHERE TicketId > 0"
+    engine.execute(query)
+    
+    cred = HttpNtlmAuth('FORDFOUNDATION\\b.marks','ZaQwSx12')
+    url = "https://fordnet.fordfound.org/ts/OPER/IT/BSD/Documents/mWatch%20Ticket%20Reports/BSD_mWatch_Tickets_Report.xlsx"
+    DownloadFile(url,cred)
+
+    ## Adds comments/satisfaction from file
+    InsertComments(engine)
+
     sys.stdout.write("Authenticating\n")
     p = Process(target=DotDotDot)
     p.start()
     session = Authenticate()
     p.terminate()
 
-    sys.stdout.write("\nDownloading Incidents\n")
-    p = Process(target=DotDotDot)
-    p.start()
-    GetIncidents(session)
-    sys.stdout.write("\nDownloading Requests\n")
-    AppendRequests(session)
-    p.terminate()
+##    sys.stdout.write("\nDownloading Incidents\n")
+##    p = Process(target=DotDotDot)
+##    p.start()
+##    GetIncidents(session)
+##    sys.stdout.write("\nDownloading Requests\n")
+##    AppendRequests(session)
+##    p.terminate()
 
-    csvFile = GetContents("Incidents.csv", engine)
+    print("Adding Tickets to Table")
+    ## Resets Ticket table
+    query = "DELETE FROM Tickets WHERE TicketId > 0"
+    engine.execute(query)
+
+    ## Adds tickets from file
+    csvFile = GetContents("Incidents.csv")
     for line in csvFile:
         values = line.replace("'--'","null").replace(",'',",",null,").replace("'-'","null")
         query = "INSERT INTO Tickets VALUES("+values+")"
@@ -301,8 +337,13 @@ def main():
             engine.execute(query)
 
     print("Getting Resolutions")
+    ## If there isn't a resolved_date or the resolved_date is different than the new one, delete the resolution
+    query = "DELETE FROM Resolutions WHERE TicketId in (SELECT TicketId FROM GBSTickets WHERE Resolved_On is null UNION SELECT GBSTickets.TicketId FROM GBSTickets WHERE GBSTickets.Resolved_On is not null and TicketID not in ( SELECT TicketId FROM Resolutions ) UNION SELECT GBSTickets.TicketId FROM GBSTickets, Resolutions WHERE GBSTickets.TicketId = Resolutions.TicketId and GBSTickets.Resolved_On is not null and GBSTickets.Resolved_On <> Resolutions.Resolved_On)"
+    engine.execute(query)
+    
     needResolQry = "SELECT GBSTickets.TicketId, GBSTickets.Resolved_On FROM GBSTickets WHERE GBSTickets.Resolved_On is not null and TicketID not in ( SELECT TicketId FROM Resolutions ) UNION SELECT GBSTickets.TicketId, GBSTickets.Resolved_On FROM GBSTickets, Resolutions WHERE GBSTickets.TicketId = Resolutions.TicketId and GBSTickets.Resolved_On is not null and GBSTickets.Resolved_On <> Resolutions.Resolved_On"
     for row in engine.execute(needResolQry):
+        engine.execute(query)
         values = "'" + str(row[0]) + "','" + LookupResolution(row[0], session).replace("'","") + "','" + str(row[1]) + "'"
         query = "INSERT INTO Resolutions VALUES("+values+")"
         engine.execute(query)

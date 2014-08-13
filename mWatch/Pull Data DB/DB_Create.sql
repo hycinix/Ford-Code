@@ -55,39 +55,27 @@ primary key(TicketId)
 CREATE TABLE Descriptions
 (
 	TicketId int,
-	TicketDescription text,
-
-	foreign key(TicketId)
-		references Tickets
+	TicketDescription text
 );
 
 CREATE TABLE Resolutions
 (
 	TicketId int,
 	Resolution text,
-	Resolved_On DateTime,
-
-	foreign key(TicketId)
-		references Tickets
+	Resolved_On DateTime
 );
 
 CREATE TABLE Ccls
 (
 	TicketId int,
-	ccl varchar(255),
-
-	foreign key(TicketId)
-		references Tickets
+	ccl varchar(255)
 )
 
 CREATE TABLE Comments
 (
 	TicketId int,
-	Satisfaction int,
-	Comment text,
-
-	foreign key(TicketId)
-		references Tickets
+	Satisfaction varchar(255),
+	Comment text
 );
 
 CREATE TABLE Users

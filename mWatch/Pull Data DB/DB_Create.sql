@@ -112,6 +112,16 @@ CREATE VIEW GeorgeReport as
 	WHERE G.Issue_Type not in (SELECT * FROM Issues) and G.Requestor_name in (SELECT * FROM Users)
 )
 
+CREATE VIEW KevinReport as
+(
+	SELECT T.TicketId, C.Ccl as CCL_Number, C.Status as CCL_Status, D.TicketDescription, T.Service_Request_Classification as Issue_Type, T.Owner, T.Priority, T.Current_Status as mWatch_Status, T.Requestor_name, T.Resolved_Time, T.Created_time, T.Resolved_On, T.Closed_Time, R.Resolution
+	FROM GBSTickets T
+		LEFT OUTER JOIN Ccls C on T.TicketId = C.TicketId
+		LEFT OUTER JOIN Descriptions D on T.TicketId = D.TicketId
+		LEFT OUTER JOIN Resolutions R on T.TicketId = R.TicketId
+		LEFT OUTER JOIN Comments Co on T.TicketId = Co.TicketId
+)
+
 INSERT INTO Users VALUES ('Agrawal, Mitali')
 INSERT INTO Users VALUES ('Ashok')
 INSERT INTO Users VALUES ('Ashok Kumar')

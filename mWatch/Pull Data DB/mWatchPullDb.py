@@ -14,6 +14,12 @@ from email.MIMEMultipart import MIMEMultipart
 from email.MIMEBase import MIMEBase
 from email.MIMEText import MIMEText
 from email import Encoders
+import win32api
+import win32con
+import win32evtlog
+import win32security
+import win32evtlogutil
+
 
 def DownloadFile(url, cred):
     '''Downloads file with credentials'''
@@ -68,10 +74,9 @@ def ResolveDoubleNewLine( content ):
     resolver = content.replace("\r\n","\n")
     return resolver
 
-def Authenticate():
+def Authenticate( password ):
     '''Authenticated to sdp.mymwatch.com'''
     username = "b.marks@fordfound.org"
-    password = "ZaQwSx12"
     postUrl = "https://sdp.mymwatch.com/Portal/index.php?r=User/authentication/Login&goto=https%3A%2F%2Fsdp.mymwatch.com%2FPortal%2Findex.php"
     session = requests.Session()
 
@@ -173,34 +178,32 @@ def GetCCLs(mWatchEngine):
     '''Gets list of Tickets to CCL#'''
     server = "ffnyc0355"
     database = "FordNet_Content"
-    query = "SELECT FLOAT2 AS MWATCHID, tp_ID AS CCLnR FROM AllUserData WHERE TP_LISTID = '5E36CE12-E5BD-45F6-8260-244BE2008D7F' AND tp_IsCurrent =1 AND FLOAT2 IS NOT NULL ORDER BY TP_ID DESC"
+    query = "SELECT FLOAT2 AS MWATCHID, tp_ID AS CCLnR, nvarchar3 as Status FROM AllUserData WHERE TP_LISTID = '5E36CE12-E5BD-45F6-8260-244BE2008D7F' AND tp_IsCurrent =1 AND FLOAT2 IS NOT NULL ORDER BY TP_ID DESC"
     engine = sqlalchemy.create_engine("mssql+pyodbc://%s/%s" % (server, database))
 
     tickets = []
-    result = mWatchEngine.execute( "SELECT TicketId FROM Tickets WHERE TicketId not in (SELECT TicketId FROM Ccls)" )
+    ## Wipe CCls
+    mWatchEngine.execute("DELETE FROM Ccls WHERE Ccl > 0")
+    result = mWatchEngine.execute( "SELECT TicketId FROM Tickets") ## WHERE TicketId not in (SELECT TicketId FROM Ccls)" )
     for ticket in result:
         tickets.append(ticket[0])
 
     for row in engine.execute(query):
         if row[0] in tickets:
-            values = "'" + str(int(row[0])) + "','" + str(row[1]) + "'"
+            values = "'" + str(int(row[0])) + "','" + str(row[1]) + "','" + str(row[2]) + "'"
             query = "INSERT INTO Ccls VALUES("+values+")"
             mWatchEngine.execute(query)
 
-def GenerateFileXl( George ):
+def GenerateFileXl( George, engine ):
     '''Generates result file with all the bells and whistles'''
 
-    server = "NYCLT4940-0142\\SQL2012"
-    database = "mWatch"
-    engine = sqlalchemy.create_engine("mssql+pyodbc://%s/%s" % (server, database))
-    
     if George:
         workbook = xlsxwriter.Workbook(directory + "BSD_mWatch_Tickets_Report.xlsx", {'strings_to_numbers' : True, 'sort' : True})
         result = engine.execute( "SELECT * FROM GeorgeReport ORDER BY TicketID DESC" )
 
     else:
         workbook = xlsxwriter.Workbook(directory + "BSD_mWatch_Tickets_Report_All.xlsx", {'strings_to_numbers' : True, 'sort' : True})
-        result = engine.execute( "SELECT * FROM GBSReport ORDER BY TicketID DESC" )
+        result = engine.execute( "SELECT * FROM KevinReport ORDER BY TicketID DESC" )
 
     worksheet = workbook.add_worksheet('mWatch Tickets')
 
@@ -219,15 +222,25 @@ def GenerateFileXl( George ):
     for i in range(len(result.keys())):
         worksheet.write(0,i,result.keys()[i], headerFormat)
 
-    worksheet.set_column('A:B', 15 ) ## TicketID, Ticket_Type
-    worksheet.set_column('C:C', 10 ) ## CCL#
-    worksheet.set_column('D:D', 60 ) ## Description
-    worksheet.set_column('E:F', 20 ) ## Issue Type, Owner
-    worksheet.set_column('G:G', 10 ) ## Priority
-    worksheet.set_column('H:M', 20 ) ## others
-    worksheet.set_column('N:N', 60 ) ## Resolution
-    worksheet.set_column('O:P', 10 ) ## Satisfaction, Comment
-    
+    if George:
+        worksheet.set_column('A:B', 15 ) ## TicketID, Ticket_Type
+        worksheet.set_column('C:C', 10 ) ## CCL#
+        worksheet.set_column('D:D', 60 ) ## Description
+        worksheet.set_column('E:F', 20 ) ## Issue Type, Owner
+        worksheet.set_column('G:G', 10 ) ## Priority
+        worksheet.set_column('H:M', 20 ) ## others
+        worksheet.set_column('N:N', 60 ) ## Resolution
+        worksheet.set_column('O:P', 10 ) ## Satisfaction, Comment
+    else:    
+        worksheet.set_column('A:A', 15 ) ## TicketID
+        worksheet.set_column('B:B', 10 ) ## CCL#
+        worksheet.set_column('C:C', 15 ) ## CCL Status        
+        worksheet.set_column('D:D', 60 ) ## Description
+        worksheet.set_column('E:F', 20 ) ## Issue Type, Owner
+        worksheet.set_column('G:G', 10 ) ## Priority
+        worksheet.set_column('H:M', 20 ) ## others
+        worksheet.set_column('N:N', 60 ) ## Resolution
+
 
     rows = result.fetchall()
 
@@ -239,11 +252,11 @@ def GenerateFileXl( George ):
                 worksheet.write(i + 1, j, "", rowFormat )
         worksheet.set_row(i+1,40)
 
-    worksheet.autofilter(0,0,len(rows),len(result.keys()) - 1)
+    worksheet.autofilter(0,0,len(rows) - 1,len(result.keys()) - 1)
     
     workbook.close()
 
-def SendSharepoint():
+def SendSharepoint( password ):
     '''Sends email to sharepoint'''
     to = [
         "testpsd@fordnet.fordfoundation.org"
@@ -255,12 +268,57 @@ def SendSharepoint():
     subject = "mWatch Ticket Reports"
     text = ""
     attach = directory + "BSD_mWatch_Tickets_Report.xlsx"
-    mail( to, cc, subject, text, attach )
+    mail( to, cc, subject, text, attach, password )
 
-def mail(to, cc, subject, text, attach):
+def SendBSD( password ):
+    '''Sends email to BSD'''
+    to = [
+        "k.zhao@fordfoundation.org",
+        "q.sun@fordfoundation.org"
+        ]
+    cc = [
+        "b.marks@fordfoundation.org"
+        ]
+    
+    subject = "BSD - mWatch Ticket Report - " + time.strftime("%m/%d")
+    text = '''[This is an automatic message]\n
+Hello BSD Team,\n
+Attached is a report of the tickets requested by the BSD\n
+Please email Brian Marks at b.marks@fordfoundation.org\n
+or call x4990 if you have any questions.'''
+    attach = directory + "BSD_mWatch_Tickets_Report_All.xlsx"
+    mail( to, cc, subject, text, attach, password )
+
+def SendTeam( password ):
+    '''Sends sharepoint link email to BSD'''
+    to = [
+        "G.Fertig@fordfoundation.org",
+        "L.Ponce@fordfoundation.org",
+        "B.Mendoza@fordfoundation.org",
+        "K.Kothur@fordfoundation.org",
+        "O.Triunfo@fordfoundation.org",
+        "M.Agrawal@fordfoundation.org",
+        "Q.Sun@fordfoundation.org",
+        "H.Kwok@fordfoundation.org",
+        "K.Zhao@fordfoundation.org"
+        ]
+    cc = [
+        "b.marks@fordfoundation.org"
+        ]
+    
+    subject = "BSD - mWatch Ticket Report - " + time.strftime("%m/%d")
+    text = '''[This is an automatic message]\n
+Hello BSD Team,\n
+Attached is a report of the tickets requested by the BSD\n
+Please email Brian Marks at b.marks@fordfoundation.org\n
+or call x4990 if you have any questions.\n
+https://fordnet.fordfound.org/ts/OPER/IT/BSD/Documents/mWatch%20Ticket%20Reports/BSD_mWatch_Tickets_Report.xlsx 
+'''
+    mail( to, cc, subject, text, None, password )
+
+def mail(to, cc, subject, text, attach, password ):
     '''Sends email from b.marks@fordfound.org'''
     username = "b.marks@fordfound.org"
-    password = "ZaQwSx12"
     msg = MIMEMultipart()
 
     msg['From'] = username
@@ -270,12 +328,12 @@ def mail(to, cc, subject, text, attach):
 
     msg.attach(MIMEText(text))
 
-    part = MIMEBase('application', 'octet-stream')
-    part.set_payload(open(attach, 'rb').read())
-    Encoders.encode_base64(part)
-    part.add_header('Content-Disposition',
-                    'attachment; filename="%s"' % os.path.basename(attach))
-    msg.attach(part)
+    if attach:
+        part = MIMEBase('application', 'octet-stream')
+        part.set_payload(open(attach, 'rb').read())
+        Encoders.encode_base64(part)
+        part.add_header('Content-Disposition','attachment; filename="%s"' % os.path.basename(attach))
+        msg.attach(part)
 
     mailServer = smtplib.SMTP("smtp.fordfound.org", 25)
     mailServer.ehlo()
@@ -287,35 +345,63 @@ def mail(to, cc, subject, text, attach):
 
 def main():
     '''Main func'''
-    server = "NYCLT4940-0142\\SQL2012"
+    ph = win32api.GetCurrentProcess()
+    th = win32security.OpenProcessToken(ph, win32con.TOKEN_READ)
+    my_sid = win32security.GetTokenInformation(th, win32security.TokenUser)[0]
+     
+    applicationName = "mWatch Pull Db"
+    eventID = 1
+    category = 5	# Shell
+    myType = win32evtlog.EVENTLOG_WARNING_TYPE
+
+    server = "FFSMQ3302"
     database = "mWatch"
     engine = sqlalchemy.create_engine("mssql+pyodbc://%s/%s" % (server, database))
+
+    passQuery = "SELECT TicketDescription FROM Descriptions WHERE TicketId = 0"
+    password = (engine.execute(passQuery).first())[0]
+
+    eventID += 1
+    win32evtlogutil.ReportEvent(applicationName, eventID, eventCategory=category, eventType=myType, strings=["Getting Comments from Sharepoint","Getting Comments from Sharepoint"], data="Application\0Data".encode("ascii"), sid=my_sid)
 
     print("Getting Comments From Sharepoint")
     ## Resets comments table
     query = "DELETE FROM Comments WHERE TicketId > 0"
     engine.execute(query)
     
-    cred = HttpNtlmAuth('FORDFOUNDATION\\b.marks','ZaQwSx12')
+    cred = HttpNtlmAuth('FORDFOUNDATION\\b.marks',password)
     url = "https://fordnet.fordfound.org/ts/OPER/IT/BSD/Documents/mWatch%20Ticket%20Reports/BSD_mWatch_Tickets_Report.xlsx"
     DownloadFile(url,cred)
 
     ## Adds comments/satisfaction from file
     InsertComments(engine)
 
+    eventID += 1
+    win32evtlogutil.ReportEvent(applicationName, eventID, eventCategory=category, eventType=myType, strings=["Authenticating","Authenticating"], data="Application\0Data".encode("ascii"), sid=my_sid)
+
     sys.stdout.write("Authenticating\n")
     p = Process(target=DotDotDot)
     p.start()
-    session = Authenticate()
+    session = Authenticate( password )
     p.terminate()
 
-##    sys.stdout.write("\nDownloading Incidents\n")
-##    p = Process(target=DotDotDot)
-##    p.start()
-##    GetIncidents(session)
-##    sys.stdout.write("\nDownloading Requests\n")
-##    AppendRequests(session)
-##    p.terminate()
+    eventID += 1
+    win32evtlogutil.ReportEvent(applicationName, eventID, eventCategory=category, eventType=myType, strings=["Downloading Incidents","Downloading Incidents"], data="Application\0Data".encode("ascii"), sid=my_sid)
+
+    sys.stdout.write("\nDownloading Incidents\n")
+    p = Process(target=DotDotDot)
+    p.start()
+    GetIncidents(session)
+
+    eventID += 1
+    win32evtlogutil.ReportEvent(applicationName, eventID, eventCategory=category, eventType=myType, strings=["Downloading Requests","Downloading Requests"], data="Application\0Data".encode("ascii"), sid=my_sid)
+
+    sys.stdout.write("\nDownloading Requests\n")
+    AppendRequests(session)
+    p.terminate()
+
+    eventID += 1
+    win32evtlogutil.ReportEvent(applicationName, eventID, eventCategory=category, eventType=myType, strings=["Adding Tickets to Table","Adding Tickets to Table"], data="Application\0Data".encode("ascii"), sid=my_sid)
 
     print("Adding Tickets to Table")
     ## Resets Ticket table
@@ -323,11 +409,14 @@ def main():
     engine.execute(query)
 
     ## Adds tickets from file
-    csvFile = GetContents("Incidents.csv")
+    csvFile = GetContents(directory + "Incidents.csv")
     for line in csvFile:
         values = line.replace("'--'","null").replace(",'',",",null,").replace("'-'","null")
         query = "INSERT INTO Tickets VALUES("+values+")"
         engine.execute(query)
+
+    eventID += 1
+    win32evtlogutil.ReportEvent(applicationName, eventID, eventCategory=category, eventType=myType, strings=["Getting Descriptions","Getting Descriptions"], data="Application\0Data".encode("ascii"), sid=my_sid)
 
     print("Getting Descriptions")
     needDescripQry = "SELECT TicketId FROM GBSTickets WHERE TicketID not in (SELECT TicketId FROM Descriptions)"
@@ -336,28 +425,42 @@ def main():
             query = "INSERT INTO Descriptions VALUES("+values+")"
             engine.execute(query)
 
+    eventID += 1
+    win32evtlogutil.ReportEvent(applicationName, eventID, eventCategory=category, eventType=myType, strings=["Getting Resolutions","Getting Resolutions"], data="Application\0Data".encode("ascii"), sid=my_sid)
+
     print("Getting Resolutions")
     ## If there isn't a resolved_date or the resolved_date is different than the new one, delete the resolution
     query = "DELETE FROM Resolutions WHERE TicketId in (SELECT TicketId FROM GBSTickets WHERE Resolved_On is null UNION SELECT GBSTickets.TicketId FROM GBSTickets WHERE GBSTickets.Resolved_On is not null and TicketID not in ( SELECT TicketId FROM Resolutions ) UNION SELECT GBSTickets.TicketId FROM GBSTickets, Resolutions WHERE GBSTickets.TicketId = Resolutions.TicketId and GBSTickets.Resolved_On is not null and GBSTickets.Resolved_On <> Resolutions.Resolved_On)"
     engine.execute(query)
     
-    needResolQry = "SELECT GBSTickets.TicketId, GBSTickets.Resolved_On FROM GBSTickets WHERE GBSTickets.Resolved_On is not null and TicketID not in ( SELECT TicketId FROM Resolutions ) UNION SELECT GBSTickets.TicketId, GBSTickets.Resolved_On FROM GBSTickets, Resolutions WHERE GBSTickets.TicketId = Resolutions.TicketId and GBSTickets.Resolved_On is not null and GBSTickets.Resolved_On <> Resolutions.Resolved_On"
+    needResolQry = "select GBSTickets.TicketId, GBSTickets.Resolved_On FROM GBSTickets WHERE GBSTickets.Resolved_On is not null and GBSTickets.TicketID not in (SELECT TicketId FROM Resolutions)"
     for row in engine.execute(needResolQry):
-        engine.execute(query)
         values = "'" + str(row[0]) + "','" + LookupResolution(row[0], session).replace("'","") + "','" + str(row[1]) + "'"
+        print(row[0])
         query = "INSERT INTO Resolutions VALUES("+values+")"
         engine.execute(query)
+
+    eventID += 1
+    win32evtlogutil.ReportEvent(applicationName, eventID, eventCategory=category, eventType=myType, strings=["Getting CCLs","Getting CCLs"], data="Application\0Data".encode("ascii"), sid=my_sid)
 
     print("Getting CCLs")
     GetCCLs(engine)
 
-    print("Generating Files")
-    GenerateFileXl( True )
+    eventID += 1
+    win32evtlogutil.ReportEvent(applicationName, eventID, eventCategory=category, eventType=myType, strings=["Generating Files","Generating Files"], data="Application\0Data".encode("ascii"), sid=my_sid)
 
-    GenerateFileXl( False )
+    print("Generating Files")
+    GenerateFileXl( True, engine )
+
+    GenerateFileXl( False, engine )
+
+    eventID += 1
+    win32evtlogutil.ReportEvent(applicationName, eventID, eventCategory=category, eventType=myType, strings=["Sending Email","Sending Email"], data="Application\0Data".encode("ascii"), sid=my_sid)
 
     print("Sending Email")
-    SendSharepoint()
+    SendSharepoint( password )
+    SendBSD( password )
+    SendTeam( password )
 
 if __name__ == "__main__":
     ## const

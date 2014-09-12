@@ -38,7 +38,7 @@ def InsertComments(engine):
     sheet = wb.sheets()[0]
     for i in range(1, sheet.nrows):
         if (sheet.cell(i,14).value != "" or sheet.cell(i,15).value != ""):
-            values = "'" + str(int(sheet.cell(i,0).value)) + "','" + str(sheet.cell(i,14).value) + "','" + str(sheet.cell(i,15).value) + "'"
+            values = "'" + str(int(sheet.cell(i,0).value)) + "','" + str(sheet.cell(i,14).value) + "','" + str(sheet.cell(i,15).value.encode('utf-8')) + "'"
             query = "INSERT INTO Comments VALUES("+values+")"
             engine.execute(query)
 

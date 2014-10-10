@@ -144,8 +144,14 @@ def main():
 ##    session = Authenticate()
 ##    print("Downloading CSV")
 ##    csvfile = GetCSV( session )
-##    print("Importing into Database")
-##    DatabaseImport( engine, csvfile )
+
+####    To compensate for the changed bit9 interface
+####    Changed on 10/10/2014
+####    File must be downloaded manually
+    csvfile = open("C:\\Users\\B.marks\\Documents\\GitHub\\Ford-Code\\Get Bit9 Report\\Bit9\\Blocked_Files_(All).csv","r")
+
+    print("Importing into Database")
+    DatabaseImport( engine, csvfile )
 
     print("Updating Threats")
     UpdateThreats(engine)

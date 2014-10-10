@@ -10,14 +10,7 @@ def Authenticate():
     loginurl = "https://parity.fordfound.org/login.php"
     logindata = {"username" : "brian",
             "password" : ";yL$*bp!Kq5/S?/k"}
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:20.0) Gecko/20100101 Firefox/20.0",
-        "Accept-Encoding": "gzip, deflate",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-        "Connection": "keep-alive"
-    }
-    response = session.post(loginurl,data=logindata, headers=headers)
+    response = session.post(loginurl,logindata)
 
     dashboardurl = "https://parity.fordfound.org/Dashboard/Dashboard/Dashboard.aspx"
     data = {"BootstrapSessionHandle" : Bootstrap(response.content) }
@@ -68,7 +61,7 @@ def UpdateThreats( engine ):
 
 def GetMissingMd5( engine ):
     '''Gets list of md5s not in database'''
-    query = "SELECT DISTINCT FileHash FROM BlockedFiles WHERE FileHash NOT IN (SELECT FileHash FROM Threats)"
+    query = "SELECT DISTINCT FileHash FROM BlockedFiles WHERE FileHash NOT IN (SELECT md5 FROM Threats)"
     md5s = []
     for row in engine.execute(query):
         md5s.append(row)
@@ -94,6 +87,7 @@ def AddMd5( engine, md5, lookup ):
     if lookup == "Not Found":
         query = "INSERT INTO Threats VALUES ('%s', %s, %s)" % (md5, "NULL", "NULL")
     else:
+        print(lookup)
         lookup = lookup.split(" / ")
         positive = lookup[0]
         total = lookup[1]
@@ -102,26 +96,10 @@ def AddMd5( engine, md5, lookup ):
 
 def GetCSV( session ):
     '''Gets CSV file'''
-    csvurl = "https://parity.fordfound.org/events.php"
-    response = session.get( csvurl )
-    formToken = GetFormToken( response.content )
-    raw_input(formToken)
-    csvPayload = {
-        "CSV_EXPORT" : "1",
-        "formToken" : formToken
-        }
-    csvfile = session.post(csvurl, csvPayload)
+    csvurl = "https://parity.fordfound.org/events.php?CSV_EXPORT"
+    csvfile = session.get(csvurl)
     return csvfile.content
 
-def GetFormToken( pageContent ):
-    '''Gets formToken for csvForm'''
-    areaDelim = "csvForm"
-    startDelim = '<input type="hidden" name="formToken" id="formToken" value="'
-    endDelim = '" />'
-    start = pageContent.find(startDelim) + len(startDelim)
-    end = pageContent.find(endDelim, start)
-    return pageContent[start:end]
-    
 def WriteXlsx(csvfile):
     '''Writes spreadsheet'''
     sources = GetSources()
@@ -166,10 +144,8 @@ def main():
 ##    session = Authenticate()
 ##    print("Downloading CSV")
 ##    csvfile = GetCSV( session )
-    print("Currently Working On Downloading CSV... Using Local Copy")
-    csvfile = open("C:\\Users\\b.marks\\desktop\\threats.csv","r").read()
-    print("Importing into Database")
-    DatabaseImport( engine, csvfile )
+##    print("Importing into Database")
+##    DatabaseImport( engine, csvfile )
 
     print("Updating Threats")
     UpdateThreats(engine)
